@@ -1,13 +1,14 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class UI_Message : UI_PauseScene
 {
     private const string DefaultMessage =
         "[기본 조작법]\n" +
-        "- WASD: 이동\n" +
+        "- Arrow Keys: 이동\n" +
         "- Mouse: 시점 이동\n" +
         "- Space: 점프, 활강\n" +
         "- ESC: 메뉴 열기\n\n" +
@@ -58,6 +59,26 @@ public class UI_Message : UI_PauseScene
         if (eventData.button != PointerEventData.InputButton.Left)
             return;
 
+        ConfirmCurrentMessage();
+    }
+
+    private void Update()
+    {
+        if (_confirmAction == null)
+            return;
+
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+            return;
+
+        if (!keyboard.enterKey.wasPressedThisFrame && !keyboard.numpadEnterKey.wasPressedThisFrame)
+            return;
+
+        ConfirmCurrentMessage();
+    }
+
+    private void ConfirmCurrentMessage()
+    {
         if (_confirmAction != null)
         {
             _confirmAction.Invoke();

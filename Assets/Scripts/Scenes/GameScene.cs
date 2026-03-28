@@ -7,12 +7,13 @@ using UnityEngine.SceneManagement;
 public class GameScene : BaseScene
 {
     private const int FloorLayer = 7;
+    private const float ForcedSpawnY = 13f;
 
     [Header("Floor Spawn")]
     [SerializeField] private string floorPrefabName = "Floor";
     [SerializeField] private float spawnPerSecond = 4f;
     [SerializeField] private float spawnRadiusFromYAxis = 5f;
-    [SerializeField] private float spawnY = 10f;
+    [SerializeField] private float spawnY = 13f;
     [SerializeField] private float floorMoveSpeed = 5f;
     [SerializeField] private float floorDespawnY = -30f;
     [SerializeField] private float overlapShrink = 0.01f;
@@ -47,6 +48,7 @@ public class GameScene : BaseScene
     {
         base.Init();
         SceneType = Define.Scene.Game;
+        spawnY = ForcedSpawnY;
         PrepareFloorSpawner();
         ConfigureInitialFloorBubbleEmitter();
         SetupTwoSidedDissolvePreview();
@@ -237,7 +239,7 @@ public class GameScene : BaseScene
         _isRetryPromptOpened = true;
         Managers.Input.SetMode(Define.InputMode.UI);
         int finalScore = GetCurrentScore();
-        string scoredRetryPrompt = $"{retryPromptMessage}\n최종 점수: {finalScore}";
+        string scoredRetryPrompt = $"최종 점수: {finalScore}\n{retryPromptMessage}\nEnter: 재시도";
 
         UI_Message opened = FindAnyObjectByType<UI_Message>();
         if (opened != null)
