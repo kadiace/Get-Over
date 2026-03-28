@@ -16,13 +16,16 @@ public sealed class FloorController : MonoBehaviour
     private bool[] _hasBaseColor;
     private bool[] _hasLegacyColor;
     private MaterialPropertyBlock _propertyBlock;
+    private BubbleEmitterController _bubbleEmitter;
 
-    public void Configure(float speed, float targetDespawnY)
+    public void Configure(float speed, float targetDespawnY, GameObject bubbleOriginal = null)
     {
         moveSpeed = speed;
         despawnY = Mathf.Min(targetDespawnY, ForcedMinDespawnY);
+
         CacheRendererDataIfNeeded();
         ApplyDarkness(0f);
+        ConfigureBubbleEmitter(bubbleOriginal);
     }
 
     private void Awake()
@@ -45,7 +48,12 @@ public sealed class FloorController : MonoBehaviour
         ApplyDarkness(darkness);
 
         if (transform.position.y <= ForcedMinDespawnY)
+        {
+            if (_bubbleEmitter != null)
+                _bubbleEmitter.ReturnAllActiveBubblesToPool();
+
             Managers.Resource.Destory(gameObject);
+        }
     }
 
     private void CacheRendererDataIfNeeded()
@@ -74,6 +82,12 @@ public sealed class FloorController : MonoBehaviour
             if (_hasLegacyColor[i])
                 _legacyColors[i] = shared.GetColor(ColorId);
         }
+    }
+
+    private void ConfigureBubbleEmitter(GameObject bubbleOriginal)
+    {
+        _bubbleEmitter ??= gameObject.GetorAddComponent<BubbleEmitterController>();
+        _bubbleEmitter.Configure(bubbleOriginal);
     }
 
     private float GetDarknessByHeight(float currentY)

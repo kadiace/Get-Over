@@ -18,29 +18,51 @@ public class GameScene : BaseScene
     [SerializeField] private float overlapShrink = 0.01f;
     [SerializeField] private LayerMask floorOverlapMask = 1 << 7;
 
+    [Header("Floor Bubble FX")]
+    [SerializeField] private string floorBubblePrefabName = "TwoSidedDissolve";
+
     [Header("Out Of Bounds")]
     [SerializeField] private float retryPromptDistanceFromYAxis = 6f;
     [SerializeField] private float retryPromptMinY = -20f;
     [SerializeField] private string retryPromptMessage = "재시도 하시겠습니까?";
 
+    [Header("Score")]
+    [SerializeField] private float scorePerSecond = 10f;
+
     [Header("TwoSidedDissolve Preview")]
     [SerializeField] private string twoSidedDissolvePreviewObjectName = "Waterfall";
 
     private GameObject _floorOriginal;
+    private GameObject _floorBubbleOriginal;
     private float _spawnInterval;
     private float _spawnAccumulator;
     private readonly Collider[] _overlapBuffer = new Collider[32];
     private PlayerController _player;
     private CameraController _cameraController;
     private bool _isRetryPromptOpened;
+    private UI_Score _scoreUi;
+    private float _survivalScore;
 
     protected override void Init()
     {
         base.Init();
         SceneType = Define.Scene.Game;
         PrepareFloorSpawner();
+        ConfigureInitialFloorBubbleEmitter();
         SetupTwoSidedDissolvePreview();
         _player = FindFirstObjectByType<PlayerController>();
+        _survivalScore = 0f;
+        SetupScoreUi();
+    }
+
+    private void ConfigureInitialFloorBubbleEmitter()
+    {
+        GameObject initialFloor = GameObject.Find("Floor");
+        if (initialFloor == null)
+            return;
+
+        BubbleEmitterController bubbleEmitter = initialFloor.GetorAddComponent<BubbleEmitterController>();
+        bubbleEmitter.Configure(_floorBubbleOriginal);
     }
 
     private void SetupTwoSidedDissolvePreview()
@@ -49,13 +71,20 @@ public class GameScene : BaseScene
         if (previewObject == null)
             return;
 
-        TwoSidedDissolveParticleController controller = previewObject.GetorAddComponent<TwoSidedDissolveParticleController>();
-        controller.Configure();
+        // TwoSidedDissolveParticleController controller = previewObject.GetorAddComponent<TwoSidedDissolveParticleController>();
+        // controller.Configure();
+
+        BubbleEmitterController bubbleEmitter = previewObject.GetorAddComponent<BubbleEmitterController>();
+        bubbleEmitter.ConfigureCircleWorldPlane(new Vector3(0f, 15f, 0f), 5f, 15f);
+        bubbleEmitter.ConfigureCircleEdge(0.3f);
+        bubbleEmitter.ConfigureEmissionDensity(20, 36, 72, 18f, new Vector2(0.04f, 0.08f));
+        bubbleEmitter.Configure(_floorBubbleOriginal);
     }
 
     private void PrepareFloorSpawner()
     {
         _floorOriginal = Managers.Resource.Load<GameObject>($"Prefabs/{floorPrefabName}");
+        _floorBubbleOriginal = Managers.Resource.Load<GameObject>($"Prefabs/{floorBubblePrefabName}");
         _spawnInterval = spawnPerSecond > 0f ? 1f / spawnPerSecond : 0f;
         _spawnAccumulator = 0f;
     }
@@ -78,7 +107,38 @@ public class GameScene : BaseScene
             }
         }
 
+        UpdateSurvivalScore();
+
         CheckPlayerOutOfBounds();
+    }
+
+    private void SetupScoreUi()
+    {
+        _scoreUi = FindFirstObjectByType<UI_Score>();
+        if (_scoreUi == null)
+            _scoreUi = Managers.UI.ShowSceneUI<UI_Score>();
+
+        if (_scoreUi != null)
+            _scoreUi.SetScore(GetCurrentScore());
+    }
+
+    private void UpdateSurvivalScore()
+    {
+        if (_isRetryPromptOpened)
+            return;
+
+        _survivalScore += Mathf.Max(0f, scorePerSecond) * Time.deltaTime;
+
+        if (_scoreUi == null)
+            SetupScoreUi();
+
+        if (_scoreUi != null)
+            _scoreUi.SetScore(GetCurrentScore());
+    }
+
+    private int GetCurrentScore()
+    {
+        return Mathf.Max(0, Mathf.FloorToInt(_survivalScore));
     }
 
     private void SpawnFloorFromPool()
@@ -112,7 +172,7 @@ public class GameScene : BaseScene
         }
 
         FloorController controller = pooledFloor.gameObject.GetorAddComponent<FloorController>();
-        controller.Configure(floorMoveSpeed, floorDespawnY);
+        controller.Configure(floorMoveSpeed, floorDespawnY, _floorBubbleOriginal);
     }
 
     private bool IsOverlappingWithExistingFloors(Transform spawnedRoot, BoxCollider box)
@@ -176,11 +236,13 @@ public class GameScene : BaseScene
     {
         _isRetryPromptOpened = true;
         Managers.Input.SetMode(Define.InputMode.UI);
+        int finalScore = GetCurrentScore();
+        string scoredRetryPrompt = $"{retryPromptMessage}\n최종 점수: {finalScore}";
 
         UI_Message opened = FindAnyObjectByType<UI_Message>();
         if (opened != null)
         {
-            opened.SetMessage(retryPromptMessage);
+            opened.SetMessage(scoredRetryPrompt);
             opened.SetConfirmAction(ReloadGameScene);
             return;
         }
@@ -189,7 +251,7 @@ public class GameScene : BaseScene
         if (message == null)
             return;
 
-        message.SetMessage(retryPromptMessage);
+        message.SetMessage(scoredRetryPrompt);
         message.SetConfirmAction(ReloadGameScene);
     }
 

@@ -88,3 +88,36 @@ public class UI_Message : UI_PauseScene
         _confirmAction = onConfirm;
     }
 }
+
+public class UI_Score : UI_Scene
+{
+    enum Texts
+    {
+        ScoreText,
+    }
+
+    private bool _isInitialized;
+
+    public override void Init()
+    {
+        if (_isInitialized)
+            return;
+
+        base.Init();
+        Bind<Text>(typeof(Texts));
+        _isInitialized = true;
+        SetScore(0);
+    }
+
+    public void SetScore(int score)
+    {
+        if (!_isInitialized)
+            Init();
+
+        Text scoreText = GetText((int)Texts.ScoreText);
+        if (scoreText == null)
+            return;
+
+        scoreText.text = $"SCORE {score}";
+    }
+}
