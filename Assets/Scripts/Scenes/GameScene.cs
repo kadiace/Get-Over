@@ -1,19 +1,18 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class GameScene : BaseScene
 {
     private const int FloorLayer = 7;
-    private const float ForcedSpawnY = 13f;
+    private const float FloorSpawnY = 13f;
+    private const float EscapeSuccessMinY = 15f;
 
     [Header("Floor Spawn")]
     [SerializeField] private string floorPrefabName = "Floor";
     [SerializeField] private float spawnPerSecond = 4f;
     [SerializeField] private float spawnRadiusFromYAxis = 5f;
-    [SerializeField] private float spawnY = 13f;
     [SerializeField] private float floorMoveSpeed = 5f;
     [SerializeField] private float floorDespawnY = -30f;
     [SerializeField] private float overlapShrink = 0.01f;
@@ -39,7 +38,6 @@ public class GameScene : BaseScene
     private float _spawnAccumulator;
     private readonly Collider[] _overlapBuffer = new Collider[32];
     private PlayerController _player;
-    private CameraController _cameraController;
     private bool _isRetryPromptOpened;
     private UI_Score _scoreUi;
     private float _survivalScore;
@@ -48,7 +46,6 @@ public class GameScene : BaseScene
     {
         base.Init();
         SceneType = Define.Scene.Game;
-        spawnY = ForcedSpawnY;
         PrepareFloorSpawner();
         ConfigureInitialFloorBubbleEmitter();
         SetupTwoSidedDissolvePreview();
@@ -152,7 +149,7 @@ public class GameScene : BaseScene
         float angle = UnityEngine.Random.value * Mathf.PI * 2f;
         Vector3 spawnPosition = new(
             Mathf.Cos(angle) * spawnRadiusFromYAxis,
-            spawnY,
+            FloorSpawnY,
             Mathf.Sin(angle) * spawnRadiusFromYAxis);
 
         Vector3 surfaceNormal = new(spawnPosition.x, 0f, spawnPosition.z);
@@ -231,15 +228,15 @@ public class GameScene : BaseScene
         if (!isFarFromYAxis && !isPastMinY)
             return;
 
-        ShowRetryMessage();
+        ShowRetryMessage(playerPosition.y >= EscapeSuccessMinY);
     }
 
-    private void ShowRetryMessage()
+    private void ShowRetryMessage(bool isEscapeSuccess)
     {
         _isRetryPromptOpened = true;
         Managers.Input.SetMode(Define.InputMode.UI);
         int finalScore = GetCurrentScore();
-        string scoredRetryPrompt = $"최종 점수: {finalScore}\n{retryPromptMessage}\nEnter: 재시도";
+        string scoredRetryPrompt = $"{(isEscapeSuccess ? "탈출에 성공하셨습니다!\n" : string.Empty)}최종 점수: {finalScore}\n{retryPromptMessage}\nEnter: 재시도";
 
         UI_Message opened = FindAnyObjectByType<UI_Message>();
         if (opened != null)
