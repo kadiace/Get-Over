@@ -386,7 +386,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "보스 통신: 지금은 상호작용할 수 없다. 사람에 올라탄 뒤 다시 시도해."
+  m_Text: "Boss Comms: You cannot interact right now. Climb onto the person and try again."
 --- !u!1 &140000
 GameObject:
   m_ObjectHideFlags: 0
@@ -465,4 +465,4 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: L Click으로 계속
+  m_Text: Continue with L Click

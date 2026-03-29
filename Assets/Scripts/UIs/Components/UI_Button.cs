@@ -45,6 +45,6 @@ public class UI_Button : UI_Base
     {
         Debug.Log("Clicked");
         _score++;
-        GetText((int)Texts.ScoreText).text = $"점수 {_score}점";
+        GetText((int)Texts.ScoreText).text = $"Score {_score}";
     }
 }

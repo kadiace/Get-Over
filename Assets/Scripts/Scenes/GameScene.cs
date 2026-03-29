@@ -8,6 +8,10 @@ public class GameScene : BaseScene
     private const int FloorLayer = 7;
     private const float FloorSpawnY = 13f;
     private const float EscapeSuccessMinY = 15f;
+    private const string RetryPromptMessage = "Would you like to retry?";
+    private const string EscapeSuccessMessage = "You escaped successfully!";
+    private const string FinalScoreLabel = "Final Score:";
+    private const string RetryHintLabel = "Enter: Retry";
 
     [Header("Floor Spawn")]
     [SerializeField] private string floorPrefabName = "Floor";
@@ -24,7 +28,6 @@ public class GameScene : BaseScene
     [Header("Out Of Bounds")]
     [SerializeField] private float retryPromptDistanceFromYAxis = 6f;
     [SerializeField] private float retryPromptMinY = -20f;
-    [SerializeField] private string retryPromptMessage = "재시도 하시겠습니까?";
 
     [Header("Score")]
     [SerializeField] private float scorePerSecond = 10f;
@@ -236,7 +239,8 @@ public class GameScene : BaseScene
         _isRetryPromptOpened = true;
         Managers.Input.SetMode(Define.InputMode.UI);
         int finalScore = GetCurrentScore();
-        string scoredRetryPrompt = $"{(isEscapeSuccess ? "탈출에 성공하셨습니다!\n" : string.Empty)}최종 점수: {finalScore}\n{retryPromptMessage}\nEnter: 재시도";
+        string scoredRetryPrompt =
+            $"{(isEscapeSuccess ? EscapeSuccessMessage + "\n" : string.Empty)}{FinalScoreLabel} {finalScore}\n{RetryPromptMessage}\n{RetryHintLabel}";
 
         UI_Message opened = FindAnyObjectByType<UI_Message>();
         if (opened != null)

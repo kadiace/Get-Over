@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class UI_ToolTip : UI_Base
 {
-    private const string DefaultMessage = "보스: 주변 냄새를 추적해.";
+    private const string DefaultMessage = "Boss: Track the scent nearby.";
 
     enum GameObjects
     {

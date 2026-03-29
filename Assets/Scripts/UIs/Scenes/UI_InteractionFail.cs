@@ -5,7 +5,7 @@ using System;
 
 public class UI_InteractionFail : UI_PauseScene
 {
-    private const string DefaultMessage = "힘이 부족해 열수 없다";
+    private const string DefaultMessage = "You are not strong enough to open this.";
 
     enum GameObjects
     {
@@ -29,7 +29,7 @@ public class UI_InteractionFail : UI_PauseScene
         Bind<Text>(typeof(Texts));
 
         SetMessage(DefaultMessage);
-        GetText((int)Texts.HintText).text = "확인";
+        GetText((int)Texts.HintText).text = "Confirm";
 
         BindEvent(GetObject((int)GameObjects.Root), OnClickClose);
         BindEvent(GetObject((int)GameObjects.Panel), OnClickClose);
