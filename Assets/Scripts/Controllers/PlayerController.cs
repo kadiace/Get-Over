@@ -52,6 +52,7 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
     private Vector3 _verticalVelocity;
     private Transform _groundFloorTransform;
     private Vector3 _groundFloorLastPosition;
+    private Quaternion _groundFloorLastRotation;
     private Transform _collisionFloorTransform;
     private Vector3 _lastRadialOutward = Vector3.right;
     private Vector3 _lastMoveDirection = Vector3.up;
@@ -59,6 +60,7 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
     private Texture2D _shadowTexture;
     private Sprite _shadowSprite;
     private float _groundReferenceDistance;
+    private readonly RaycastHit[] _groundHitBuffer = new RaycastHit[16];
 
     protected override void Init()
     {
@@ -117,7 +119,9 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
         if (_isGrounded && hitByCastBeforeMove && !_jumpPressedThisFrame)
             SnapToFloor(floorHitBeforeMove, gravityDirection);
 
-        Vector3 moveDirection = GetCameraRelativeDirectionOnPlane(_moveInput, gravityDirection);
+        Vector3 moveDirection = _isGrounded
+            ? GetGroundedCylinderDirection(_moveInput, gravityDirection)
+            : GetCameraRelativeDirectionOnPlane(_moveInput, gravityDirection);
         float moveSpeed = _isGrounded ? floorMoveSpeed : airMoveSpeed;
         Vector3 planarVelocity = moveDirection * moveSpeed;
 
@@ -195,14 +199,63 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
         Vector3 center = transform.TransformPoint(_characterController.center);
         float castDistance = (_characterController.height * 0.5f) + groundCheckPadding;
 
-        return Physics.SphereCast(
+        int hitCount = Physics.SphereCastNonAlloc(
             center,
             _characterController.radius,
             gravityDirection,
-            out hit,
+            _groundHitBuffer,
             castDistance,
             1 << FloorLayer,
-            QueryTriggerInteraction.Ignore) && hit.collider.gameObject.layer == FloorLayer;
+            QueryTriggerInteraction.Ignore);
+
+        if (hitCount <= 0)
+        {
+            hit = default;
+            return false;
+        }
+
+        int nearestHitIndex = -1;
+        float nearestHitDistance = float.MaxValue;
+        int preferredHitIndex = -1;
+        float preferredHitDistance = float.MaxValue;
+
+        for (int i = 0; i < hitCount; i++)
+        {
+            RaycastHit candidateHit = _groundHitBuffer[i];
+            Collider candidateCollider = candidateHit.collider;
+            if (candidateCollider == null || candidateCollider.gameObject.layer != FloorLayer)
+                continue;
+
+            if (candidateHit.distance < nearestHitDistance)
+            {
+                nearestHitDistance = candidateHit.distance;
+                nearestHitIndex = i;
+            }
+
+            if (_groundFloorTransform == null || !candidateCollider.transform.IsChildOf(_groundFloorTransform))
+                continue;
+
+            if (candidateHit.distance < preferredHitDistance)
+            {
+                preferredHitDistance = candidateHit.distance;
+                preferredHitIndex = i;
+            }
+        }
+
+        if (preferredHitIndex >= 0)
+        {
+            hit = _groundHitBuffer[preferredHitIndex];
+            return true;
+        }
+
+        if (nearestHitIndex >= 0)
+        {
+            hit = _groundHitBuffer[nearestHitIndex];
+            return true;
+        }
+
+        hit = default;
+        return false;
     }
 
     private void SnapToFloor(RaycastHit floorHit, Vector3 gravityDirection)
@@ -238,11 +291,19 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
             return;
 
         Vector3 currentFloorPosition = _groundFloorTransform.position;
+        Quaternion currentFloorRotation = _groundFloorTransform.rotation;
+
         Vector3 floorDelta = currentFloorPosition - _groundFloorLastPosition;
-        if (floorDelta.sqrMagnitude > Define.epsilon)
-            _characterController.Move(floorDelta);
+        Quaternion floorRotationDelta = currentFloorRotation * Quaternion.Inverse(_groundFloorLastRotation);
+
+        Vector3 rotatedPlayerPosition = floorRotationDelta * (transform.position - _groundFloorLastPosition) + _groundFloorLastPosition;
+        Vector3 rotationDelta = rotatedPlayerPosition - transform.position;
+        Vector3 attachDelta = floorDelta + rotationDelta;
+        if (attachDelta.sqrMagnitude > Define.epsilon)
+            _characterController.Move(attachDelta);
 
         _groundFloorLastPosition = _groundFloorTransform.position;
+        _groundFloorLastRotation = _groundFloorTransform.rotation;
     }
 
     private Vector3 GetCurrentGroundFloorVelocity()
@@ -260,11 +321,22 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
         if (floorTransform == null)
             return;
 
-        if (_groundFloorTransform != floorTransform)
+        Transform attachFloorTransform = ResolveAttachFloorTransform(floorTransform);
+        if (attachFloorTransform == null)
+            return;
+
+        if (_groundFloorTransform != attachFloorTransform)
         {
-            _groundFloorTransform = floorTransform;
-            _groundFloorLastPosition = floorTransform.position;
+            _groundFloorTransform = attachFloorTransform;
+            _groundFloorLastPosition = attachFloorTransform.position;
+            _groundFloorLastRotation = attachFloorTransform.rotation;
         }
+    }
+
+    private static Transform ResolveAttachFloorTransform(Transform floorTransform)
+    {
+        FloorController floorController = floorTransform.GetComponentInParent<FloorController>();
+        return floorController != null ? floorController.transform : floorTransform;
     }
 
     private void ClearGroundFloor()
@@ -477,6 +549,20 @@ public sealed class PlayerController : BaseController<Define.PlayerAnimState>
 
         Vector3 direction = (right * moveInput.x) + (forward * moveInput.y);
         direction = Vector3.ProjectOnPlane(direction, planeNormal);
+        return Vector3.ClampMagnitude(direction, 1f);
+    }
+
+    private static Vector3 GetGroundedCylinderDirection(Vector2 moveInput, Vector3 gravityDirection)
+    {
+        Vector3 radialOutward = gravityDirection.normalized;
+        Vector3 tangentAroundYAxis = Vector3.Cross(Vector3.up, radialOutward);
+
+        if (tangentAroundYAxis.sqrMagnitude <= Define.epsilon)
+            tangentAroundYAxis = Vector3.forward;
+        else
+            tangentAroundYAxis.Normalize();
+
+        Vector3 direction = (tangentAroundYAxis * moveInput.x) + (Vector3.up * moveInput.y);
         return Vector3.ClampMagnitude(direction, 1f);
     }
 }
