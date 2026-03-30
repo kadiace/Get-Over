@@ -1,3 +1,0 @@
-repository "MeanIt/MeanIt@14568788641942@cloud"
-  path "/"
-    smartbranch "/master/arcade"
