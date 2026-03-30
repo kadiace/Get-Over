@@ -48,7 +48,7 @@ public class UI_Message : UI_PauseScene
         Bind<Text>(typeof(Texts));
 
         GetText((int)Texts.ScriptText).text = _currentMessage;
-        GetText((int)Texts.ConfirmButtonText).text = "Confirm";
+        GetText((int)Texts.ConfirmButtonText).text = "Retry";
 
         BindEvent(GetObject((int)GameObjects.ConfirmButton), OnClickConfirm);
         _isInitialized = true;
